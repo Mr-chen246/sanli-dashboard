@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.bootcdn.net cdn.jsdelivr.net cdn.sheetjs.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.bootcdn.net cdn.jsdelivr.net cdn.sheetjs.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; worker-src 'none'">
 <title>医药商业直连数据看板</title>
-<script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
-<script>window._e=typeof echarts!=='undefined';if(!window._e){document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');}</script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-<script>if(typeof XLSX==='undefined'){document.write('<script src="https://cdn.bootcdn.net/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');}</script>
+<script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js" integrity="sha384-o5uz97et3bErHvpKfD4Jz4n0JfhJDWABFuF4NP+iEEDxE1VwMWJ19QGR0lqFZnr6" crossorigin="anonymous"></script>
+<script>window._e=typeof echarts!=='undefined';if(!window._e){document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" integrity="sha384-o5uz97et3bErHvpKfD4Jz4n0JfhJDWABFuF4NP+iEEDxE1VwMWJ19QGR0lqFZnr6" crossorigin="anonymous"><\/script>');}</script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js" integrity="sha384-QCIdq2UMVEoSRhR3ZWZwdz2/pivLowr+eokFMdYyukq7qI26VYRxFa4Nl6FKetmL" crossorigin="anonymous"></script>
+<script>if(typeof XLSX==='undefined'){document.write('<script src="https://cdn.bootcdn.net/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"><\/script>');}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--primary:#3b82f6;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg:#0f172a;--card-bg:#1e293b;--border:#334155;--text:#e2e8f0;--text-secondary:#94a3b8;--radius:8px}
@@ -319,7 +319,7 @@ function doLogout() {
 
 // ===== XSS 安全防护 =====
 function escapeHtml(str) {
-  if (!str) return '';
+  if (!str && str !== 0) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
@@ -394,9 +394,9 @@ function getBadge(rate) {
 function initDashboard() {
   var d = DASHBOARD_DATA;
   var regionSel = document.getElementById('filterRegion');
-  regionSel.innerHTML = d.区域列表.map(function(r) { return '<option value="'+r+'" selected>'+r+'</option>'; }).join('');
+  regionSel.innerHTML = d.区域列表.map(function(r) { return '<option value="'+escapeHtml(r)+'" selected>'+escapeHtml(r)+'</option>'; }).join('');
   var provSel = document.getElementById('filterProvince');
-  provSel.innerHTML = d.省份列表.map(function(p) { return '<option value="'+p+'" selected>'+p+'</option>'; }).join('');
+  provSel.innerHTML = d.省份列表.map(function(p) { return '<option value="'+escapeHtml(p)+'" selected>'+escapeHtml(p)+'</option>'; }).join('');
   currentFilters.regions = d.区域列表.slice();
   currentFilters.provinces = d.省份列表.slice();
   currentFilters.levels = ['一级', '二级'];
@@ -413,7 +413,7 @@ function updateProvinceFilter() {
   provSel.innerHTML = d.省份列表.map(function(p) {
     var disabled = validProvinces.indexOf(p) === -1 ? 'disabled' : '';
     var selected = currentSelected.indexOf(p) !== -1 ? 'selected' : '';
-    return '<option value="'+p+'" '+disabled+' '+selected+'>'+p+'</option>';
+    return '<option value="'+escapeHtml(p)+'" '+disabled+' '+selected+'>'+escapeHtml(p)+'</option>';
   }).join('');
 }
 
@@ -489,8 +489,8 @@ function applyFilters() {
 
 function resetFilters() {
   var d = DASHBOARD_DATA;
-  document.getElementById('filterRegion').innerHTML = d.区域列表.map(function(r) { return '<option value="'+r+'" selected>'+r+'</option>'; }).join('');
-  document.getElementById('filterProvince').innerHTML = d.省份列表.map(function(p) { return '<option value="'+p+'" selected>'+p+'</option>'; }).join('');
+  document.getElementById('filterRegion').innerHTML = d.区域列表.map(function(r) { return '<option value="'+escapeHtml(r)+'" selected>'+escapeHtml(r)+'</option>'; }).join('');
+  document.getElementById('filterProvince').innerHTML = d.省份列表.map(function(p) { return '<option value="'+escapeHtml(p)+'" selected>'+escapeHtml(p)+'</option>'; }).join('');
   document.getElementById('filterDateFrom').value = '';
   document.getElementById('filterDateTo').value = '';
   // Reset level and dept selects
@@ -533,8 +533,9 @@ function updateRegionCards(filteredCustomers, filteredImpl, filteredAgreements) 
     var agreeRate = impl > 0 ? (agree / impl * 100).toFixed(1) : '0.0';
     var convRate = total > 0 ? (agree / total * 100).toFixed(1) : '0.0';
 
-    return '<div class="region-card" onclick="drillDownRegion(\''+region+'\')" style="cursor:pointer">' +
-      '<div class="region-card-title">'+icons[idx]+' '+region+'</div>' +
+    var jsRegion = region.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return '<div class="region-card" onclick="drillDownRegion(\''+jsRegion+'\')" style="cursor:pointer">' +
+      '<div class="region-card-title">'+icons[idx]+' '+escapeHtml(region)+'</div>' +
       '<div class="region-card-stats">' +
         '<span class="stat-label">全量客户</span><span class="stat-value">'+total.toLocaleString()+'</span>' +
         '<span class="stat-label">已实施</span><span class="stat-value">'+impl.toLocaleString()+'</span>' +
@@ -588,8 +589,10 @@ function sortRegionTable(key) {
 
 function renderRegionTable() {
   document.getElementById('regionTableBody').innerHTML = regionTableData.map(function(row) {
-    var regionLabel = row.region ? ' [' + row.region + ']' : '';
-    return '<tr><td class="expandable" onclick="drillDownProvince(\''+row.name+'\')">📍 '+row.name+regionLabel+'</td>' +
+    var regionLabel = row.region ? ' [' + escapeHtml(row.region) + ']' : '';
+    var safeName = escapeHtml(row.name);
+    var jsSafeName = row.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    return '<tr><td class="expandable" onclick="drillDownProvince(\''+jsSafeName+'\')">📍 '+safeName+regionLabel+'</td>' +
       '<td>'+row.total.toLocaleString()+'</td><td>'+row.impl.toLocaleString()+'</td><td>'+row.agree.toLocaleString()+'</td>' +
       '<td><span class="badge '+getBadge(row.implRate)+'">'+row.implRate.toFixed(1)+'%</span></td>' +
       '<td><span class="badge '+getBadge(row.agreeRate)+'">'+row.agreeRate.toFixed(1)+'%</span></td>' +
@@ -682,9 +685,9 @@ function renderDetailTable() {
   var start = (detailPage - 1) * PAGE_SIZE;
   var pageData = details.slice(start, start + PAGE_SIZE);
   document.getElementById('detailTableBody').innerHTML = pageData.map(function(d) {
-    return '<tr><td>'+d.省份+'</td><td>'+d.区域+'</td><td>'+d.客户等级+'</td><td>'+d.客户全称+'</td><td>'+d.部门+'</td>' +
-      '<td>'+d.是否能直连+'</td><td>'+d.直连方式+'</td><td>'+d.直连情况+'</td>' +
-      '<td>'+d.实施完成时间+'</td><td>'+d.协议签收日期+'</td><td>'+d.是否寄回易联+'</td><td>'+d.是否寄回商业公司+'</td><td>'+d.异常情况+'</td></tr>';
+    return '<tr><td>'+escapeHtml(d.省份)+'</td><td>'+escapeHtml(d.区域)+'</td><td>'+escapeHtml(d.客户等级)+'</td><td>'+escapeHtml(d.客户全称)+'</td><td>'+escapeHtml(d.部门)+'</td>' +
+      '<td>'+escapeHtml(d.是否能直连)+'</td><td>'+escapeHtml(d.直连方式)+'</td><td>'+escapeHtml(d.直连情况)+'</td>' +
+      '<td>'+escapeHtml(d.实施完成时间)+'</td><td>'+escapeHtml(d.协议签收日期)+'</td><td>'+escapeHtml(d.是否寄回易联)+'</td><td>'+escapeHtml(d.是否寄回商业公司)+'</td><td>'+escapeHtml(d.异常情况)+'</td></tr>';
   }).join('');
   document.getElementById('detailPagination').innerHTML =
     '<button onclick="detailPage=1;renderDetailTable()" '+(detailPage===1?'disabled':'')+'>首页</button>' +
@@ -718,8 +721,8 @@ function switchTab(tab) {
   else if (tab === 'pendingAgree') { data = _pendingAgree; cols = ['省份','区域','商业类别','商业公司','直连方式','实施完成时间','所属部门']; }
   else { data = _exceptions; cols = ['省份','区域','商业类别','商业公司名称','登记签收日期','异常情况','是否寄回易联','是否寄回商业公司','备注']; }
   document.getElementById('exceptionTableWrap').innerHTML =
-    '<table class="data-table"><thead><tr>'+cols.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead>' +
-    '<tbody>'+data.map(function(row){return '<tr>'+cols.map(function(c){return '<td>'+(row[c]||'')+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table>';
+    '<table class="data-table"><thead><tr>'+cols.map(function(c){return '<th>'+escapeHtml(c)+'</th>';}).join('')+'</tr></thead>' +
+    '<tbody>'+data.map(function(row){return '<tr>'+cols.map(function(c){return '<td>'+escapeHtml(row[c]||'')+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table>';
 }
 
 function drillDown() { detailPage=1; renderDetailTable(); document.getElementById('searchInput').scrollIntoView({behavior:'smooth'}); }
@@ -731,7 +734,12 @@ function exportDetailCSV() {
   for (var i=0; i<rows.length; i++) {
     var cells = rows[i].querySelectorAll('th, td');
     var rowData = [];
-    for (var j=0; j<cells.length; j++) rowData.push('"'+cells[j].textContent.replace(/"/g, '""')+'"');
+    for (var j=0; j<cells.length; j++) {
+      var cellText = cells[j].textContent.replace(/"/g, '""');
+      // \u9632CSV\u516C\u5F0F\u6CE8\u5165\uFF1A\u4EE5 =\u3001+\u3001-\u3001@\u3001% \u5F00\u5934\u7684\u5355\u5143\u683C\u524D\u52A0\u5355\u5F15\u53F7
+      if (/^[=+\-@%]/.test(cellText)) { cellText = "'" + cellText; }
+      rowData.push('"'+cellText+'"');
+    }
     csv += rowData.join(',') + '\n';
   }
   var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -936,8 +944,8 @@ function rebuildDashboardData(p2r) {
   };
   currentFilters.regions = regions.slice();
   currentFilters.provinces = provinces.slice();
-  document.getElementById('filterRegion').innerHTML = regions.map(function(r) { return '<option value="'+r+'" selected>'+r+'</option>'; }).join('');
-  document.getElementById('filterProvince').innerHTML = provinces.map(function(p) { return '<option value="'+p+'" selected>'+p+'</option>'; }).join('');
+  document.getElementById('filterRegion').innerHTML = regions.map(function(r) { return '<option value="'+escapeHtml(r)+'" selected>'+escapeHtml(r)+'</option>'; }).join('');
+  document.getElementById('filterProvince').innerHTML = provinces.map(function(p) { return '<option value="'+escapeHtml(p)+'" selected>'+escapeHtml(p)+'</option>'; }).join('');
 }
 
 window.addEventListener('resize', function() {
