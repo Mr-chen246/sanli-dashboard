@@ -399,7 +399,7 @@ function initDashboard() {
   provSel.innerHTML = d.省份列表.map(function(p) { return '<option value="'+escapeHtml(p)+'" selected>'+escapeHtml(p)+'</option>'; }).join('');
   currentFilters.regions = d.区域列表.slice();
   currentFilters.provinces = d.省份列表.slice();
-  currentFilters.levels = ['一级', '二级'];
+  currentFilters.levels = (d.类别列表 && d.类别列表.length > 0) ? d.类别列表.slice() : ['一级', '二级'];
   currentFilters.depts = ['处方部', 'OTC1部', 'OTC2部'];
   applyFilters();
 }
@@ -422,7 +422,7 @@ function applyFilters() {
   updateProvinceFilter();
   currentFilters.provinces = getSelectValues('filterProvince');
   var lv = getSelectValues('filterLevel');
-  currentFilters.levels = lv.length > 0 ? lv : ['一级', '二级'];
+  currentFilters.levels = lv.length > 0 ? lv : (d.类别列表 ? d.类别列表.slice() : ['一级', '二级']);
   var dp = getSelectValues('filterDept');
   currentFilters.depts = dp.length > 0 ? dp : ['处方部', 'OTC1部', 'OTC2部'];
   currentFilters.dateFrom = document.getElementById('filterDateFrom').value;
@@ -500,7 +500,7 @@ function resetFilters() {
   for (var i=0; i<dpSel.options.length; i++) dpSel.options[i].selected = true;
   currentFilters.regions = d.区域列表.slice();
   currentFilters.provinces = d.省份列表.slice();
-  currentFilters.levels = ['一级', '二级'];
+  currentFilters.levels = (d.类别列表 && d.类别列表.length > 0) ? d.类别列表.slice() : ['一级', '二级'];
   currentFilters.depts = ['处方部', 'OTC1部', 'OTC2部'];
   applyFilters();
 }
@@ -937,15 +937,22 @@ function rebuildDashboardData(p2r) {
     });
   });
   var allIN = new Set(IMPLEMENTED.map(function(i){return i.商业公司;}));
+  // 收集所有唯一的商业类别，避免硬编码筛选遗漏数据
+  var allLevels = new Set();
+  CUSTOMERS.forEach(function(c) { if(c.客户等级) allLevels.add(c.客户等级); });
+  IMPLEMENTED.forEach(function(i) { if(i.商业类别) allLevels.add(i.商业类别); });
+  AGREEMENTS.forEach(function(a) { if(a.商业类别) allLevels.add(a.商业类别); });
+  var levelList = Array.from(allLevels).sort();
   DASHBOARD_DATA = {
     区域省份数据:rpData, 实施月度趋势:{}, 协议月度趋势:{}, 区域漏斗:{}, 直连状态分布:{}, 部门分布:{}, 异常协议:[], 待实施客户:[], 待回收协议客户:[],
     全国漏斗:{ 全量客户:CUSTOMERS.length, 可直连客户:CUSTOMERS.filter(function(c){ return (c.是否能直连&&c.是否能直连.trim())||(c.直连情况&&c.直连情况.trim())||allIN.has(c.客户全称); }).length, 已实施完成:IMPLEMENTED.length, 已收协议:AGREEMENTS.length },
-    区域列表:regions, 省份列表:provinces, 省份区域映射:p2r
+    区域列表:regions, 省份列表:provinces, 省份区域映射:p2r, 类别列表:levelList
   };
   currentFilters.regions = regions.slice();
   currentFilters.provinces = provinces.slice();
   document.getElementById('filterRegion').innerHTML = regions.map(function(r) { return '<option value="'+escapeHtml(r)+'" selected>'+escapeHtml(r)+'</option>'; }).join('');
   document.getElementById('filterProvince').innerHTML = provinces.map(function(p) { return '<option value="'+escapeHtml(p)+'" selected>'+escapeHtml(p)+'</option>'; }).join('');
+  document.getElementById('filterLevel').innerHTML = levelList.map(function(l) { return '<option value="'+escapeHtml(l)+'" selected>'+escapeHtml(l)+'</option>'; }).join('');
 }
 
 window.addEventListener('resize', function() {
