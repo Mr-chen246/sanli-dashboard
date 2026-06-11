@@ -197,8 +197,10 @@ body.mobile-mode .mobile-toggle{top:8px;right:8px;padding:8px 12px;font-size:15p
 
 <div class="header-right" style="display:flex;justify-content:center;margin-bottom:20px">
 <input type="file" id="importFile" accept=".xlsx,.xls" onchange="handleFileImport(event)">
-<button class="btn btn-import" onclick="checkAdminThenImport()">📥 导入数据</button>
-<button class="btn" onclick="exportDetailCSV()">📤 导出</button>
+<button class="btn btn-import" onclick="checkAdminThenImport()">📥 导入Excel</button>
+<button class="btn" onclick="exportDetailCSV()">📤 导出CSV</button>
+<button class="btn" onclick="exportDataJSON()">💾 导出JSON</button>
+<button class="btn" onclick="importDataJSON()">📂 导入JSON</button>
 <button class="btn btn-primary" onclick="resetFilters()">重置</button>
 </div>
 
@@ -349,6 +351,11 @@ var regionSortKey = 'region', regionSortAsc = true;
 var activeExceptionTab = 'pendingImpl', detailPage = 1;
 var PAGE_SIZE = 50;
 var _pendingImpl = [], _pendingAgree = [], _exceptions = [];
+
+function formatTimeStr(isoStr) {
+  var d = new Date(isoStr);
+  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+}
 
 function showToast(msg) {
   var t = document.getElementById('toast');
@@ -916,6 +923,67 @@ function loadDataFromLocalStorage() {
   }
 }
 
+// ===== 导出/导入 JSON 文件（跨设备手动同步）=====
+function exportDataJSON() {
+  var data = {
+    CUSTOMERS: CUSTOMERS,
+    IMPLEMENTED: IMPLEMENTED,
+    AGREEMENTS: AGREEMENTS,
+    p2r: DASHBOARD_DATA.省份区域映射,
+    updateTime: new Date().toISOString()
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'sanli-dashboard-data-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✅ 数据已导出为 JSON 文件，可发送到其他设备导入');
+}
+
+function importDataJSON() {
+  if (sessionStorage.getItem('admin_auth') !== '1') {
+    var pwd = prompt('🔐 导入数据需要管理员权限，请输入管理员密码：');
+    if (pwd === null) return;
+    if (pwd !== ADMIN_PASS) { alert('❌ 密码错误！'); return; }
+    sessionStorage.setItem('admin_auth', '1');
+  }
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(re) {
+      try {
+        var data = JSON.parse(re.target.result);
+        if (!data.CUSTOMERS || !data.IMPLEMENTED || !data.AGREEMENTS || !data.p2r) {
+          showToast('❌ JSON 格式不正确，缺少必要字段');
+          return;
+        }
+        CUSTOMERS = data.CUSTOMERS;
+        IMPLEMENTED = data.IMPLEMENTED;
+        AGREEMENTS = data.AGREEMENTS;
+        rebuildDashboardData(data.p2r);
+        saveDataToLocalStorage(data.p2r);
+        initDashboard();
+        if (data.updateTime) {
+          document.getElementById('updateTimeValue').textContent = formatTimeStr(data.updateTime);
+        }
+        showToast('✅ JSON 导入成功！客户:'+CUSTOMERS.length+' 实施:'+IMPLEMENTED.length+' 协议:'+AGREEMENTS.length);
+      } catch(err) {
+        showToast('❌ JSON 解析失败: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
 function rebuildDashboardData(p2r) {
   var provinces = [], seenP = new Set();
   CUSTOMERS.forEach(function(c) { if (c.省份 && !seenP.has(c.省份)) { seenP.add(c.省份); provinces.push(c.省份); } });
@@ -991,7 +1059,7 @@ if (window.innerWidth < 768) {
   toggleMobile();
 }
 
-// 页面加载时优先从 localStorage 恢复上次导入的数据
+// 页面加载：1) 先用 localStorage 快速渲染 2) 后台检查云端是否有更新数据
 loadDataFromLocalStorage();
 initDashboard();
 </script>
